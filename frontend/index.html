@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ระบบตรวจสอบสภาพอากาศและฝนตก</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #f1f5f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .card { background: #ffffff; width: 100%; max-width: 420px; padding: 24px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); }
+    h2 { text-align: center; color: #0f172a; margin-top: 0; }
+    .form-group { margin-bottom: 20px; }
+    label { font-size: 14px; font-weight: 600; color: #475569; display: block; margin-bottom: 6px; }
+    select { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; outline: none; }
+    .status-badge { padding: 14px; border-radius: 10px; font-size: 17px; font-weight: bold; text-align: center; margin-bottom: 20px; }
+    .rain-true { background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; }
+    .rain-false { background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .grid-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; text-align: center; }
+    .item-title { font-size: 13px; color: #64748b; font-weight: 500; }
+    .item-value { font-size: 24px; font-weight: bold; color: #1e293b; margin-top: 4px; }
+    .item-unit { font-size: 14px; color: #94a3b8; font-weight: normal; }
+    .time-badge { font-size: 12px; color: #94a3b8; text-align: center; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>🌦️ Weather Alert System</h2>
+
+    <div class="form-group">
+      <label for="locationSelector">เลือกตำแหน่งจุดตรวจวัด:</label>
+      <select id="locationSelector" onchange="updateDashboard()">
+        <option value="node_1">จุดที่ 1: ศาลา MBA </option>
+        <option value="node_2">จุดที่ 2: อาคาร7 </option>
+      </select>
+    </div>
+
+    <div id="rainStatus" class="status-badge rain-false">
+      กำลังดึงข้อมูล...
+    </div>
+
+    <div class="grid">
+      <div class="grid-item">
+        <div class="item-title">อุณหภูมิ</div>
+        <div class="item-value"><span id="tempVal">--</span> <span class="item-unit">°C</span></div>
+      </div>
+      <div class="grid-item">
+        <div class="item-title">ความชื้น</div>
+        <div class="item-value"><span id="humVal">--</span> <span class="item-unit">%</span></div>
+      </div>
+    </div>
+
+    <div class="time-badge">อัปเดตล่าสุด: <span id="timeVal">--</span></div>
+  </div>
+
+  <script>
+    async function updateDashboard() {
+      const locationId = document.getElementById('locationSelector').value;
+      const statusBox = document.getElementById('rainStatus');
+
+      try {
+        const res = await fetch(`http://localhost:8080/api/sensors/${locationId}/latest`);
+        if (!res.ok) throw new Error('Data not ready');
+
+        const data = await res.json();
+        document.getElementById('tempVal').innerText = data.temperature;
+        document.getElementById('humVal').innerText = data.humidity;
+        document.getElementById('timeVal').innerText = new Date(data.updated_at).toLocaleTimeString('th-TH');
+
+        if (data.is_raining) {
+          statusBox.className = 'status-badge rain-true';
+          statusBox.innerText = '🌧️ ตรวจพบฝนตก!';
+        } else {
+          statusBox.className = 'status-badge rain-false';
+          statusBox.innerText = '☀️ ไม่มีฝน (ปลอดโปร่ง)';
+        }
+      } catch (err) {
+        statusBox.className = 'status-badge';
+        statusBox.style.background = '#f1f5f9';
+        statusBox.style.color = '#64748b';
+        statusBox.innerText = '⏳ ยังไม่มีข้อมูลจากจุดนี้';
+        document.getElementById('tempVal').innerText = '--';
+        document.getElementById('humVal').innerText = '--';
+        document.getElementById('timeVal').innerText = '--';
+      }
+    }
+
+    // เรียกทำงานทันทีและทำซ้ำทุกๆ 3 วินาที
+    updateDashboard();
+    setInterval(updateDashboard, 3000);
+  </script>
+</body>
+</html>
